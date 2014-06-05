@@ -1,13 +1,12 @@
 package tw.edu.ncku.ee.hpds.tai.mapred.comdetect.preprocessing;
 
 import java.io.IOException;
-
 import java.util.StringTokenizer;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -40,9 +39,8 @@ public class CalculateInfluence {
 		}
 	
 	public static class InfluenceCalculatorReducer
-		extends Reducer<Text, Text, Text, Text>{
+		extends Reducer<Text, Text, NullWritable, Text>{
 		
-		private Text resultKey = new Text();
 		private Text resultValue = new Text();
 		
 		public void reduce(Text sourceNode, Iterable<Text> destNodeWithWeights, Context context)
@@ -69,12 +67,11 @@ public class CalculateInfluence {
 				tmpWeight = Integer.valueOf(tmpValue.substring(tmpValue.indexOf(",")+1));
 				tmpDestNode = tmpValue.substring(0, tmpValue.indexOf(",")-1);
 				
-				tmpValue.concat(tmpDestNode + "\t" + Integer.toString(tmpWeight/weightSum));
+				tmpValue.concat(sourceNode.toString() + "\t" 
+								+ tmpDestNode + "\t"
+								+ Integer.toString(tmpWeight/weightSum));
 				
-				resultKey.set(sourceNode);
-				resultValue.set(tmpValue);
-				
-				context.write(resultKey, resultValue);
+				context.write(NullWritable.get(), resultValue);
 			}
 		}
 	}
@@ -92,7 +89,7 @@ public class CalculateInfluence {
 		job.setJarByClass(CalculateInfluence.class);
 		job.setMapperClass(EdgeWeightReaderMapper.class);
 		job.setReducerClass(InfluenceCalculatorReducer.class);
-		job.setOutputKeyClass(Text.class);
+		job.setOutputKeyClass(NullWritable.class);
 		job.setOutputValueClass(Text.class);
 		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
 		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
