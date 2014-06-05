@@ -35,7 +35,10 @@ public class CalculateTotInfluence {
 			
 			// <k, v> = <node b, associate edge weight>
 			interKey.set(inValueSplit[1]);
-			interValue.set(Integer.valueOf(inValueSplit[2]));
+			context.write(interKey, interValue);
+			
+			// <k, v> = <node a + node b, associate edge weight> (original k-v)
+			interKey.set(inValueSplit[0] + "\t" + inValueSplit[1]);
 			context.write(interKey, interValue);
 		}
 	}
@@ -50,15 +53,33 @@ public class CalculateTotInfluence {
 			
 			int totalInfluence = 0;
 			
-			for (IntWritable inf : AssociatedInfluences){
-				totalInfluence += inf.get();
+			// If the current <k-v> is a node's associate edge weights,
+			// Sum up all the weights and output "node	0	totalInfluence"
+			if (!calculatedNode.toString().contains("\t")){  
+				
+				for (IntWritable inf : AssociatedInfluences){
+					totalInfluence += inf.get();
+				}
+				
+				resultValue.set(calculatedNode.toString() + "\t"
+								+ "0\t"
+								+ Integer.toString(totalInfluence));
+				
+				context.write(NullWritable.get(), resultValue);
+			
+			// else, (not a <k-v> intended for edge weight calculation)
+			// just output the <k-v>
+			} else {	
+				
+				for (IntWritable inf : AssociatedInfluences){
+					
+					// In fact, there should only be one value in AssociatedInfluences
+					// Therefore, only one k-v should be outputted
+					resultValue.set(calculatedNode.toString() + "\t"
+									+ inf.toString());
+					context.write(NullWritable.get(), resultValue);
+				}	
 			}
-			
-			resultValue.set(calculatedNode.toString() + "\t"
-							+ "0\t"
-							+ Integer.toString(totalInfluence));
-			
-			context.write(NullWritable.get(), resultValue);
 		}
 	}
 	
