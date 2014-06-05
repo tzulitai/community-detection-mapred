@@ -8,6 +8,7 @@
   <description>MapReduce for community detection of large social network graphs by tzulitai@ee.ncku.edu.tw</description>
   <modules>
   	<module>graph-data-preprocessing</module>
+  	<module>newman-community-detection</module>
   </modules>
   <dependencies>
   	<dependency>
