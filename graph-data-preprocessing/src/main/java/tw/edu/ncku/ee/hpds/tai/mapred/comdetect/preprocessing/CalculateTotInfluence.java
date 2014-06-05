@@ -23,7 +23,7 @@ public class CalculateTotInfluence {
 		private IntWritable interValue = new IntWritable();	// Single associated edge weight
 		private String[] inValueSplit;
 		
-		public void map(Object key, Text EdgeWithInfluence, Context context)
+		public void map(Object offset, Text EdgeWithInfluence, Context context)
 			throws IOException, InterruptedException {
 			String ewiStr = new String(EdgeWithInfluence.toString());
 			inValueSplit = ewiStr.split("\\t");
