@@ -1,10 +1,10 @@
 package tw.edu.ncku.ee.hpds.tai.mapred.comdetect.newman;
 
 import java.io.IOException;
+import java.lang.Math;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -23,6 +23,7 @@ public class CalculateModularityChange {
 		private Text interValue = new Text();
 		private String[] inValueSplit;
 		
+		// TODO import values from metric file in distributed cache
 		private static int minNodeId = 101;
 		private static int maxNodeId = 64500000;
 		
@@ -62,6 +63,10 @@ public class CalculateModularityChange {
 		
 		private int a = 1;
 		private int b = 0;
+		private double modDiff = 0;
+		
+		// TODO import value from metric file in distributed cache
+		private int t = 0;
 		
 		public void reduce(Text mergeScheme, Iterable<Text> infoSequence, Context context)
 			throws IOException, InterruptedException {
@@ -76,10 +81,44 @@ public class CalculateModularityChange {
 					b += Integer.valueOf(interValueSplit[2]);
 				} else {
 					a *= Integer.valueOf(interValueSplit[2]);
-				}
+				} 
+			}
+			
+			// adding a random value between 0.0 and 1.0 to break ties in modularity differences
+			modDiff = t*b + a + Math.random();
+			
+			for (Text inf : infoSequence) {
 				
-				// TODO
+				interValueSplit = inf.toString().split(",");
+				
+				resultValue.set("-" + Double.toString(modDiff) +"\t"
+								+ interValueSplit[0] + "\t"
+								+ interValueSplit[1] + "\t"
+								+ interValueSplit[2]);
+				
+				context.write(NullWritable.get(), resultValue);
 			}
 		}
+	}
+	
+	public static void main(String[] args) throws Exception {
+		Configuration conf = new Configuration();
+		String[] otherArgs = new GenericOptionsParser(conf,args).getRemainingArgs();
+		
+		if (otherArgs.length != 2) {
+			System.err.println("Usage: newman- <in> <out>");
+			System.exit(2);
+		}
+		
+		Job job = new Job(conf, "Newman algorithm - Calculate Modularity Change");
+		job.setJarByClass(CalculateModularityChange.class);
+		job.setMapperClass(EdgeTokenizerMapper.class);
+		job.setReducerClass(CalculateModularityDiffReducer.class);
+		job.setOutputKeyClass(NullWritable.class);
+		job.setOutputValueClass(Text.class);
+		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
+		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
+		
+		System.exit(job.waitForCompletion(true) ? 0 : 1);
 	}
 }
