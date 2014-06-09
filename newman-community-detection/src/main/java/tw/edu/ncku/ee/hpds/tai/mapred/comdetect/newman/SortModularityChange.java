@@ -112,7 +112,7 @@ public class SortModularityChange {
 				// i,j,IJedgeWeight
 				infoSeqSplit = inf.toString().split(",");
 				
-				// TODO this implementation introduces a lot of redundant sets and writes...
+				// TODO this implementation introduces a lot of redundant operations...
 				// very dumb implementation...
 				// Should try to use Counters
 				
@@ -122,17 +122,6 @@ public class SortModularityChange {
 				ijPair.setNodeI(infoSeqSplit[0]);
 				ijPair.setNodeJ(infoSeqSplit[1]);
 				ijPair.setInfluence(Double.valueOf(infoSeqSplit[2]));
-				
-				// Update the metric file
-				// (Will be rewritten many times, but the values are actually the same)
-				FileWriter fw = new FileWriter("/home/hpds/metricFile.txt");
-				String metricInfo = new String(String.valueOf(MIN_NODE_ID) + ","
-												+ String.valueOf(MAX_NODE_ID) + ","
-												+ String.valueOf(TOTAL_INFLUENCE_SUM) + ","
-												+ CURRENT_MERGE_I + ","
-												+ CURRENT_MERGE_J);
-				fw.write(metricInfo);
-				fw.close();
 				
 				if ( ((infoSeqSplit[0] == ijPair.getNodeI().toString()) || (infoSeqSplit[1] == ijPair.getNodeJ().toString()))
 						&& infoSeqSplit[1] != "0") {
@@ -185,6 +174,17 @@ public class SortModularityChange {
 					context.write(NullWritable.get(), resultValue);
 				}
 			}
+			
+			// Update the metric file
+			// (Will be rewritten many times, but the values are actually the same)
+			FileWriter fw = new FileWriter("/home/hpds/metricFile.txt");
+			String metricInfo = new String(String.valueOf(MIN_NODE_ID) + ","
+											+ String.valueOf(MAX_NODE_ID) + ","
+											+ String.valueOf(TOTAL_INFLUENCE_SUM) + ","
+											+ CURRENT_MERGE_I + ","
+											+ CURRENT_MERGE_J);
+			fw.write(metricInfo);
+			fw.close();
 		}
 	}
 	
