@@ -204,6 +204,8 @@ public class SortModularityChange {
 		job.setJarByClass(SortModularityChange.class);
 		job.setMapperClass(ModDiffTokenizerMapper.class);
 		job.setReducerClass(MaxModChangeRetrieverReducer.class);
+		job.setMapOutputKeyClass(DoubleWritable.class);
+		job.setMapOutputValueClass(Text.class);
 		job.setOutputKeyClass(NullWritable.class);
 		job.setOutputValueClass(Text.class);
 		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
