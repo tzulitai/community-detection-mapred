@@ -2,6 +2,7 @@ package tw.edu.ncku.ee.hpds.tai.mapred.comdetect.newman;
 
 import java.io.IOException;
 import java.lang.Math;
+import java.net.URI;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -10,6 +11,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.filecache.DistributedCache;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
@@ -105,12 +107,15 @@ public class CalculateModularityChange {
 		Configuration conf = new Configuration();
 		String[] otherArgs = new GenericOptionsParser(conf,args).getRemainingArgs();
 		
-		if (otherArgs.length != 2) {
-			System.err.println("Usage: newman-calculate-mod-change <in> <out>");
+		if (otherArgs.length != 3) {
+			System.err.println("Usage: newman-calculate-mod-change <in> <out> <path/to/metric/file>");
 			System.exit(2);
 		}
 		
 		Job job = new Job(conf, "Newman algorithm - Calculate Modularity Change");
+		
+		DistributedCache.addCacheFile(new URI(otherArgs[2]), conf);
+		
 		job.setJarByClass(CalculateModularityChange.class);
 		job.setMapperClass(EdgeTokenizerMapper.class);
 		job.setReducerClass(CalculateModularityDiffReducer.class);
