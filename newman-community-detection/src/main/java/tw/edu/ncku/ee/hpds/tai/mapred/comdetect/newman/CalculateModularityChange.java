@@ -144,6 +144,8 @@ public class CalculateModularityChange {
 		job.setJarByClass(CalculateModularityChange.class);
 		job.setMapperClass(EdgeTokenizerMapper.class);
 		job.setReducerClass(CalculateModularityDiffReducer.class);
+		job.setMapOutputKeyClass(Text.class);
+		job.setMapOutputValueClass(Text.class);
 		job.setOutputKeyClass(NullWritable.class);
 		job.setOutputValueClass(Text.class);
 		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
