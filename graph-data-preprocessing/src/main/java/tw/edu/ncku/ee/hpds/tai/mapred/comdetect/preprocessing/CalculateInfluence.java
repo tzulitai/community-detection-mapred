@@ -1,7 +1,7 @@
 package tw.edu.ncku.ee.hpds.tai.mapred.comdetect.preprocessing;
 
 import java.io.IOException;
-import java.util.StringTokenizer;
+import java.util.ArrayList;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -16,84 +16,85 @@ import org.apache.hadoop.util.GenericOptionsParser;
 
 public class CalculateInfluence {
 
-	public static class EdgeWeightReaderMapper
-		extends Mapper<Object, Text, Text, Text>{
-			
-		private Text interKey = new Text();    // Source node.
-											   // Format: 101 (Text)
-		private Text interValue = new Text();  // Destination node, weight
-											   // Format: 54123,20 (Text) 
-		private String destNodeWithWeight = new String();
-		
+	public static class EdgeWeightReaderMapper extends
+			Mapper<Object, Text, Text, Text> {
+
+		private Text interKey = new Text(); // Source node.
+											// Format: 101 (Text)
+		private Text interValue = new Text(); // Destination node, weight
+												// Format: 54123,20 (Text)
+
 		public void map(Object offset, Text edgeAndWeight, Context context)
-			throws IOException, InterruptedException {
-			StringTokenizer eawStr = new StringTokenizer(edgeAndWeight.toString());
-			
-			interKey.set(eawStr.nextToken());
-			
-			destNodeWithWeight.concat(eawStr.nextToken() + "," + eawStr.nextToken());
-			interValue.set(destNodeWithWeight);
-			
+				throws IOException, InterruptedException {
+			String eawStr = new String(edgeAndWeight.toString());
+			String[] eawStrSplit = eawStr.split("\t");
+			interKey.set(eawStrSplit[0]);
+			interValue.set(eawStrSplit[1] + "\t" + eawStrSplit[2]);
 			context.write(interKey, interValue);
 		}
-		}
-	
-	public static class InfluenceCalculatorReducer
-		extends Reducer<Text, Text, NullWritable, Text>{
-		
+	}
+
+	public static class InfluenceCalculatorReducer extends
+			Reducer<Text, Text, NullWritable, Text> {
+
 		private Text resultValue = new Text();
-		
-		public void reduce(Text sourceNode, Iterable<Text> destNodeWithWeights, Context context)
-			throws IOException, InterruptedException {
-			
-			int weightSum = 0;
-			int tmpWeight = 0;
+
+		public void reduce(Text sourceNode, Iterable<Text> destNodeWithWeights,
+				Context context) throws IOException, InterruptedException {
+
+			double weightSum = 0;
 			String tmpValue = new String();
-			String tmpDestNode = new String();
-			
+			String[] tmpindivValue = new String[2];
+			ArrayList<Text> cache = new ArrayList<Text>();
+
 			// Calculate total edge weight
-			for (Text itr : destNodeWithWeights){
-				
+			for (Text itr : destNodeWithWeights) {
 				tmpValue = itr.toString();
-				tmpWeight = Integer.valueOf(tmpValue.substring(tmpValue.indexOf(",")+1));
-				
-				weightSum += tmpWeight;
+				tmpindivValue = tmpValue.split("\t");
+				weightSum += Double.valueOf(tmpindivValue[1]);
+
+				Text tmpItr = new Text();
+				tmpItr.set(itr);
+				cache.add(tmpItr);
 			}
-			
+
 			// Calculate and output individual influence
-			for (Text itr : destNodeWithWeights){
-				
-				tmpValue = itr.toString();
-				tmpWeight = Integer.valueOf(tmpValue.substring(tmpValue.indexOf(",")+1));
-				tmpDestNode = tmpValue.substring(0, tmpValue.indexOf(",")-1);
-				
-				tmpValue.concat(sourceNode.toString() + "\t" 
-								+ tmpDestNode + "\t"
-								+ Integer.toString(tmpWeight/weightSum));
-				
+			int cacheSize = cache.size();
+			for (int count = 0; count < cacheSize; count++) {
+				tmpValue = cache.get(count).toString();
+				tmpindivValue = tmpValue.split("\t");
+				resultValue.set(sourceNode.toString()
+						+ "\t"
+						+ tmpindivValue[0]
+						+ "\t"
+						+ String.valueOf(Double.valueOf(tmpindivValue[1])
+								/ weightSum));
 				context.write(NullWritable.get(), resultValue);
 			}
 		}
 	}
-	
-	public void main(String[] args) throws Exception {
+
+	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		String[] otherArgs = new GenericOptionsParser(conf,args).getRemainingArgs();
-		
+		String[] otherArgs = new GenericOptionsParser(conf, args)
+				.getRemainingArgs();
+
 		if (otherArgs.length != 2) {
 			System.err.println("Usage: calculateinfluence <in> <out>");
 			System.exit(2);
 		}
-		
+
 		Job job = new Job(conf, "Calculate Influence");
 		job.setJarByClass(CalculateInfluence.class);
 		job.setMapperClass(EdgeWeightReaderMapper.class);
 		job.setReducerClass(InfluenceCalculatorReducer.class);
+		job.setMapOutputKeyClass(Text.class);// map output key
+		job.setMapOutputValueClass(Text.class);// map output value
 		job.setOutputKeyClass(NullWritable.class);
 		job.setOutputValueClass(Text.class);
 		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
 		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
-		
+
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
 	}
 }
