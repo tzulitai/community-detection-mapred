@@ -25,9 +25,15 @@ public class CalculateTotInfluence {
 																	// edge
 																	// weight
 		private String[] inValueSplit;
+<<<<<<< HEAD
 
 		public void map(Object key, Text EdgeWithInfluence, Context context)
 				throws IOException, InterruptedException {
+=======
+		
+		public void map(Object offset, Text EdgeWithInfluence, Context context)
+			throws IOException, InterruptedException {
+>>>>>>> tai
 			String ewiStr = new String(EdgeWithInfluence.toString());
 			inValueSplit = ewiStr.split("\\t");
 
