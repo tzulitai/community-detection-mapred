@@ -106,7 +106,7 @@ public class CalculateModularityChange {
 		String[] otherArgs = new GenericOptionsParser(conf,args).getRemainingArgs();
 		
 		if (otherArgs.length != 2) {
-			System.err.println("Usage: newman- <in> <out>");
+			System.err.println("Usage: newman-calculate-mod-change <in> <out>");
 			System.exit(2);
 		}
 		
