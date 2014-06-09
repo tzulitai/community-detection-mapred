@@ -5,7 +5,7 @@ import java.net.URI;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -19,9 +19,9 @@ import org.apache.hadoop.util.GenericOptionsParser;
 public class SortModularityChange {
 	
 	public static class ModDiffTokenizerMapper
-		extends Mapper<Object, Text, IntWritable, Text>{
+		extends Mapper<Object, Text, DoubleWritable, Text>{
 		
-		private IntWritable interModDiff = new IntWritable();
+		private DoubleWritable interModDiff = new DoubleWritable();
 		private Text interValue = new Text();
 		
 		public void map(Object offset, Text modDiffWithInfo, Context context)
@@ -29,7 +29,7 @@ public class SortModularityChange {
 			String mdwiStr = new String(modDiffWithInfo.toString());
 			String[] mdwiStrSplit = mdwiStr.split("\\t");
 			
-			interModDiff.set(Integer.valueOf(mdwiStrSplit[0]));
+			interModDiff.set(Double.valueOf(mdwiStrSplit[0]));
 			interValue.set(mdwiStrSplit[1] + ","
 							+ mdwiStrSplit[2] + ","
 							+ mdwiStrSplit[3]);
@@ -41,7 +41,7 @@ public class SortModularityChange {
 	}
 	
 	public static class MaxModChangeRetrieverReducer
-		extends Reducer<IntWritable, Text, NullWritable, Text>{
+		extends Reducer<DoubleWritable, Text, NullWritable, Text>{
 		
 		private class MaxModChangeNodePair {
 			
@@ -69,7 +69,7 @@ public class SortModularityChange {
 		private MaxModChangeNodePair ijPair;
 		private String[] infoSeqSplit;
 		
-		public void reduce(IntWritable modChange, Iterable<Text> infoSequence, Context context)
+		public void reduce(DoubleWritable modChange, Iterable<Text> infoSequence, Context context)
 			throws IOException, InterruptedException {
 			
 			for(Text inf : infoSequence){
