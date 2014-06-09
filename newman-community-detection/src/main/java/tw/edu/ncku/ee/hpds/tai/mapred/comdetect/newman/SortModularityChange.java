@@ -19,8 +19,6 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
-import tw.edu.ncku.ee.hpds.tai.mapred.comdetect.newman.utils.MetricCounters;
-
 public class SortModularityChange {
 	
 	public static class ModDiffTokenizerMapper
