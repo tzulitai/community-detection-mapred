@@ -1,25 +1,28 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<groupId>tw.edu.ncku.ee.hpds.tai</groupId>
-	<artifactId>community-detection-mapreduce</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<packaging>pom</packaging>
-	<name>community-detection-mapreduce</name>
-	<description>MapReduce for community detection of large social network graphs by tzulitai@ee.ncku.edu.tw</description>
-	<modules>
-		<module>graph-data-preprocessing</module>
-	</modules>
-	<dependencies>
-		<dependency>
-			<groupId>org.apache.hadoop</groupId>
-			<artifactId>hadoop-common</artifactId>
-			<version>2.2.0</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.hadoop</groupId>
-			<artifactId>hadoop-mapreduce-client-core</artifactId>
-			<version>2.2.0</version>
-		</dependency>
-	</dependencies>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>tw.edu.ncku.ee.hpds.tai</groupId>
+  <artifactId>community-detection-mapreduce</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <name>community-detection-mapreduce</name>
+  <description>MapReduce for community detection of large social network graphs by tzulitai@ee.ncku.edu.tw</description>
+  <modules>
+  	<module>graph-data-preprocessing</module>
+  </modules>
+  <dependencies>
+  	<dependency>
+  		<groupId>org.apache.hadoop</groupId>
+  		<artifactId>hadoop-common</artifactId>
+  		<version>2.2.0</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.apache.hadoop</groupId>
+  		<artifactId>hadoop-mapreduce-client-core</artifactId>
+  		<version>2.2.0</version>
+  	</dependency>
+  </dependencies>
+  <properties>
+        <maven.compiler.target>1.7</maven.compiler.target>
+        <maven.compiler.source>1.7</maven.compiler.source>
+  </properties>
 </project>

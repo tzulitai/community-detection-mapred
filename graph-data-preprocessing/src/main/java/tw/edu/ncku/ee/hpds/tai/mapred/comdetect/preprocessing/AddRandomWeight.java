@@ -5,7 +5,7 @@ import java.util.StringTokenizer;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -13,7 +13,6 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.util.GenericOptionsParser;
-
 
 public class AddRandomWeight {
 
@@ -44,14 +43,15 @@ public class AddRandomWeight {
 		}
 	}
 
-	public static class IntSumReducer extends Reducer<Text, Text, Text, Text> {
+	public static class IntSumReducer extends
+			Reducer<Text, Text, NullWritable, Text> {
 		private Text result = new Text();
 
 		public void reduce(Text key, Iterable<Text> values, Context context)
 				throws IOException, InterruptedException {
 			for (Text val : values) {
-				result.set(val);
-				context.write(key, result);
+				result.set(key + "\t" + val);
+				context.write(NullWritable.get(), result);
 			}
 		}
 	}
@@ -67,10 +67,12 @@ public class AddRandomWeight {
 		Job job = new Job(conf, "friend weight");
 		job.setJarByClass(AddRandomWeight.class);
 		job.setMapperClass(TokenizerMapper.class);
-		job.setCombinerClass(IntSumReducer.class);
+		// job.setCombinerClass(IntSumReducer.class);
 		job.setReducerClass(IntSumReducer.class);
-		job.setOutputKeyClass(Text.class);
-		job.setOutputValueClass(IntWritable.class);
+		job.setMapOutputKeyClass(Text.class);// map output key
+		job.setMapOutputValueClass(Text.class);// map output value
+		job.setOutputKeyClass(NullWritable.class);// reduce output key
+		job.setOutputValueClass(Text.class);// reduce output key
 		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
 		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
