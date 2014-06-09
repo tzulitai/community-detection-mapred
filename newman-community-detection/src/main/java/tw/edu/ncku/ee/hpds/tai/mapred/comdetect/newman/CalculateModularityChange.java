@@ -1,5 +1,7 @@
 package tw.edu.ncku.ee.hpds.tai.mapred.comdetect.newman;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.lang.Math;
 import java.net.URI;
@@ -24,13 +26,24 @@ public class CalculateModularityChange {
 		private Text interKey = new Text();
 		private Text interValue = new Text();
 		private String[] inValueSplit;
-		
-		// TODO import values from metric file in distributed cache
-		private static int minNodeId = 101;
-		private static int maxNodeId = 64500000;
+		private Path[] metricFilePath;
+		private int MIN_NODE_ID;
+		private int MAX_NODE_ID;
 		
 		public void map(Object offset, Text EdgeWithInfluence, Context context)
 			throws IOException, InterruptedException {
+			
+			metricFilePath = DistributedCache.getLocalCacheFiles(context.getConfiguration());
+			BufferedReader br = new BufferedReader(new FileReader(metricFilePath[0].toString()));
+			
+			while(br.ready()){
+				String tmpLine = br.readLine();
+				String[] lineSplit = tmpLine.split(",");
+				
+				MIN_NODE_ID = Integer.valueOf(lineSplit[0]);
+				MAX_NODE_ID = Integer.valueOf(lineSplit[1]);
+			}
+			
 			String ewiStr = new String(EdgeWithInfluence.toString());
 			inValueSplit = ewiStr.split("\\t");
 					
@@ -43,13 +56,12 @@ public class CalculateModularityChange {
 			} else {
 				
 				// Loop through all possible node pair permutations 
-				for (int nodeCount_1 = minNodeId; nodeCount_1 <= maxNodeId; nodeCount_1++) {
-					for (int nodeCount_2 = nodeCount_1 + 1; nodeCount_2 <= maxNodeId; nodeCount_2++){
+				for (int nodeCount_1 = MIN_NODE_ID; nodeCount_1 <= MAX_NODE_ID; nodeCount_1++) {
+					for (int nodeCount_2 = nodeCount_1 + 1; nodeCount_2 <= MAX_NODE_ID; nodeCount_2++){
 						
 						interKey.set(Integer.toString(nodeCount_1) + "," + Integer.toString(nodeCount_2));
 						interValue.set(inValueSplit[0] + "," + inValueSplit[1] + "," + inValueSplit[2]);
 						context.write(interKey, interValue);
-						
 					}
 				}
 			}
@@ -62,16 +74,26 @@ public class CalculateModularityChange {
 		private Text resultValue = new Text();
 		private String[] interKeySplit;
 		private String[] interValueSplit;
+		private Path[] metricFilePath;
 		
 		private int a = 1;
 		private int b = 0;
 		private double modDiff = 0;
 		
-		// TODO import value from metric file in distributed cache
-		private int t = 0;
+		private int TOTAL_INFLUENCE_SUM;
 		
 		public void reduce(Text mergeScheme, Iterable<Text> infoSequence, Context context)
 			throws IOException, InterruptedException {
+			
+			metricFilePath = DistributedCache.getLocalCacheFiles(context.getConfiguration());
+			BufferedReader br = new BufferedReader(new FileReader(metricFilePath[0].toString()));
+			
+			while(br.ready()){
+				String tmpLine = br.readLine();
+				String[] lineSplit = tmpLine.split(",");
+				
+				TOTAL_INFLUENCE_SUM = Integer.valueOf(lineSplit[2]);
+			}
 			
 			interKeySplit = mergeScheme.toString().split(",");
 			
@@ -87,7 +109,7 @@ public class CalculateModularityChange {
 			}
 			
 			// adding a random value between 0.0 and 1.0 to break ties in modularity differences
-			modDiff = t*b + a + Math.random();
+			modDiff = TOTAL_INFLUENCE_SUM*b + a + Math.random();
 			
 			for (Text inf : infoSequence) {
 				
