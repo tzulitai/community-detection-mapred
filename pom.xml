@@ -9,6 +9,7 @@
   <modules>
   	<module>graph-data-preprocessing</module>
   	<module>newman-community-detection</module>
+  	<module>modified-approx-newman</module>
   </modules>
   <dependencies>
   	<dependency>
