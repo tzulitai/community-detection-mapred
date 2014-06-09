@@ -76,8 +76,8 @@ public class CalculateModularityChange {
 		private String[] interValueSplit;
 		private Path[] metricFilePath;
 		
-		private int a = 1;
-		private int b = 0;
+		private double a = 1;
+		private double b = 0;
 		private double modDiff = 0;
 		
 		private int TOTAL_INFLUENCE_SUM;
@@ -102,9 +102,9 @@ public class CalculateModularityChange {
 				interValueSplit = inf.toString().split(",");
 				
 				if (interKeySplit[1] != "0"){
-					b += Integer.valueOf(interValueSplit[2]);
+					b += Double.valueOf(interValueSplit[2]);
 				} else {
-					a *= Integer.valueOf(interValueSplit[2]);
+					a *= Double.valueOf(interValueSplit[2]);
 				} 
 			}
 			
@@ -115,6 +115,9 @@ public class CalculateModularityChange {
 				
 				interValueSplit = inf.toString().split(",");
 				
+				// "negative" modularity difference
+				// so that the minimum will represent the maximum value
+				// (for simplification in the next stage of MR computation)
 				resultValue.set("-" + Double.toString(modDiff) +"\t"
 								+ interValueSplit[0] + "\t"
 								+ interValueSplit[1] + "\t"
