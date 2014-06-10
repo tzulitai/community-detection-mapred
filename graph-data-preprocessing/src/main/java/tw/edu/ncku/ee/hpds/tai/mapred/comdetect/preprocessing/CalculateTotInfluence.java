@@ -57,6 +57,18 @@ public class CalculateTotInfluence {
 			long incNormalized = (long) (inc * Math.pow(10, 18));
 			context.getCounter(NewmanMetricCounters.TOTAL_INFLUENCE_SUM).increment(incNormalized);
 		}
+		
+		private void setNewMaxNodeId(int newId, Context context) {
+			long newIdNormalized = (long) newId;
+			context.getCounter(NewmanMetricCounters.MAX_NODE_ID).setValue(newIdNormalized);
+		}
+		
+		private boolean isLargerThanOldId(int newId, Context context) {
+			
+			long oldId = context.getCounter(NewmanMetricCounters.MAX_NODE_ID).getValue();
+			if((long)newId > (long)oldId) return true;
+			return false;
+		}
 
 		private Text resultValue = new Text();
 
@@ -65,19 +77,28 @@ public class CalculateTotInfluence {
 				throws IOException, InterruptedException {
 
 			double totalInfluence = 0;
+			String calNodeStr = calculatedNode.toString();
 
 			// If the current <k-v> is a node's associate edge weights,
 			// Sum up all the weights and output "node	0	totalInfluence"
-			if (!calculatedNode.toString().contains("\t")) {
+			if (!calNodeStr.contains("\t")) {
 
 				for (DoubleWritable inf : AssociatedInfluences) {
 					totalInfluence += inf.get();
 				}
 
-				resultValue.set(calculatedNode.toString() + "\t" + "0\t"
+				resultValue.set(calNodeStr + "\t" + "0\t"
 						+ Double.toString(totalInfluence));
 
 				context.write(NullWritable.get(), resultValue);
+				
+				// Also, find the maximum node id
+				// to validate the metric file
+				// later used in the newman algorithm.
+				// This part of code should be executed for all node ids.
+				int calNodeInt = Integer.valueOf(calNodeStr);
+				if(isLargerThanOldId(calNodeInt, context))
+					setNewMaxNodeId(Integer.valueOf(calculatedNode.toString()),context);
 
 				// else, (not a <k-v> intended for edge weight calculation)
 				// just output the <k-v>
@@ -130,7 +151,11 @@ public class CalculateTotInfluence {
 		double newTotInfluenceSum = 
 				job.getCounters().findCounter(NewmanMetricCounters.TOTAL_INFLUENCE_SUM).getValue() / Math.pow(10, 18);
 		
+		long newMaxNodeId = 
+				job.getCounters().findCounter(NewmanMetricCounters.MAX_NODE_ID).getValue();
+		
 		metricInfoFactory.getMetricInfo().updateTotInfluenceSum(Double.toString(newTotInfluenceSum));
+		metricInfoFactory.getMetricInfo().updateMaxNodeId(Integer.toString((int)newMaxNodeId));
 		metricInfoFactory.writeMetricInfoToHDFS(metricFilePathInHDFS, conf);
 		
 		System.exit(0);
