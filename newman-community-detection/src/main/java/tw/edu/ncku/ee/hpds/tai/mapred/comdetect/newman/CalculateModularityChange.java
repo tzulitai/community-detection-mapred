@@ -1,11 +1,15 @@
 package tw.edu.ncku.ee.hpds.tai.mapred.comdetect.newman;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.Math;
 import java.net.URI;
+import java.util.ArrayList;
 
+import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
@@ -13,7 +17,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.filecache.DistributedCache;
+//import org.apache.hadoop.mapreduce.filecache.DistributedCache;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
@@ -26,15 +30,15 @@ public class CalculateModularityChange {
 		private Text interKey = new Text();
 		private Text interValue = new Text();
 		private String[] inValueSplit;
-		private Path[] metricFilePath;
 		private int MIN_NODE_ID;
 		private int MAX_NODE_ID;
 		
 		public void map(Object offset, Text EdgeWithInfluence, Context context)
 			throws IOException, InterruptedException {
 			
-			metricFilePath = DistributedCache.getLocalCacheFiles(context.getConfiguration());
+			Path[] metricFilePath = DistributedCache.getLocalCacheFiles(context.getConfiguration());		
 			BufferedReader br = new BufferedReader(new FileReader(metricFilePath[0].toString()));
+			
 			
 			while(br.ready()){
 				String tmpLine = br.readLine();
@@ -43,6 +47,7 @@ public class CalculateModularityChange {
 				MIN_NODE_ID = Integer.valueOf(lineSplit[0]);
 				MAX_NODE_ID = Integer.valueOf(lineSplit[1]);
 			}
+			br.close();
 			
 			String ewiStr = new String(EdgeWithInfluence.toString());
 			inValueSplit = ewiStr.split("\\t");
@@ -74,26 +79,27 @@ public class CalculateModularityChange {
 		private Text resultValue = new Text();
 		private String[] interKeySplit;
 		private String[] interValueSplit;
-		private Path[] metricFilePath;
 		
 		private double a = 1;
 		private double b = 0;
 		private double modDiff = 0;
 		
-		private int TOTAL_INFLUENCE_SUM;
+		private Double TOTAL_INFLUENCE_SUM;
 		
 		public void reduce(Text mergeScheme, Iterable<Text> infoSequence, Context context)
 			throws IOException, InterruptedException {
-			
-			metricFilePath = DistributedCache.getLocalCacheFiles(context.getConfiguration());
+			ArrayList<Text> cache = new ArrayList<Text>();
+			Path[] metricFilePath = DistributedCache.getLocalCacheFiles(context.getConfiguration());		
 			BufferedReader br = new BufferedReader(new FileReader(metricFilePath[0].toString()));
 			
 			while(br.ready()){
 				String tmpLine = br.readLine();
 				String[] lineSplit = tmpLine.split(",");
 				
-				TOTAL_INFLUENCE_SUM = Integer.valueOf(lineSplit[2]);
+				TOTAL_INFLUENCE_SUM = Double.valueOf(lineSplit[2]);
 			}
+			
+			br.close();
 			
 			interKeySplit = mergeScheme.toString().split(",");
 			
@@ -105,15 +111,20 @@ public class CalculateModularityChange {
 					b += Double.valueOf(interValueSplit[2]);
 				} else {
 					a *= Double.valueOf(interValueSplit[2]);
-				} 
+				}
+				
+				Text tmpinf = new Text();
+				tmpinf.set(inf);
+				cache.add(tmpinf);
 			}
 			
 			// adding a random value between 0.0 and 1.0 to break ties in modularity differences
 			modDiff = TOTAL_INFLUENCE_SUM*b + a + Math.random();
 			
-			for (Text inf : infoSequence) {
-				
-				interValueSplit = inf.toString().split(",");
+			int cacheSize = cache.size();
+			//for (Text inf : infoSequence) {
+			for (int count = 0; count < cacheSize; count++) {				
+				interValueSplit = cache.get(count).toString().split(",");
 				
 				// "negative" modularity difference
 				// so that the minimum will represent the maximum value
@@ -128,6 +139,7 @@ public class CalculateModularityChange {
 		}
 	}
 	
+	
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
 		String[] otherArgs = new GenericOptionsParser(conf,args).getRemainingArgs();
@@ -136,10 +148,12 @@ public class CalculateModularityChange {
 			System.err.println("Usage: newman-calculate-mod-change <in> <out> <path/to/metric/file>");
 			System.exit(2);
 		}
-		
 		Job job = new Job(conf, "Newman algorithm - Calculate Modularity Change");
+		DistributedCache.addCacheFile(new URI("/user/hdfs-2.2.0/metricFile.txt"), job.getConfiguration());
+		//DistributedCache.addCacheFile(new URI("/user/hdfs-2.2.0/metricFile.txt"), conf);
+		//DistributedCache.addCacheFile(new URI("hdfs://localhost:9000/user/hdfs-2.2.0/metricFile.txt"), conf);
 		
-		DistributedCache.addCacheFile(new URI(otherArgs[2]), conf);
+		//job.addCacheFile(new URI("/user/hdfs-2.2.0/metricFile.txt"));
 		
 		job.setJarByClass(CalculateModularityChange.class);
 		job.setMapperClass(EdgeTokenizerMapper.class);
