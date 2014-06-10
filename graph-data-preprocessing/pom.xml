@@ -8,4 +8,11 @@
   <artifactId>graph-data-preprocessing</artifactId>
   <name>graph-data-preprocessing-mr</name>
   <description>Data preprocessing MR jobs</description>
+  <dependencies>
+  	<dependency>
+  		<groupId>tw.edu.ncku.ee.hpds.tai</groupId>
+  		<artifactId>community-detection-utils</artifactId>
+  		<version>0.0.1-SNAPSHOT</version>
+  	</dependency>
+  </dependencies>
 </project>
