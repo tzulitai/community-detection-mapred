@@ -14,6 +14,9 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
+import tw.edu.ncku.ee.hpds.tai.mapred.comdetect.utils.NewmanMetricCounters;
+import tw.edu.ncku.ee.hpds.tai.mapred.comdetect.utils.NewmanMetricInfoFactory;
+
 public class CalculateTotInfluence {
 
 	public static class EdgeWeightTokenizerMapper extends
@@ -49,6 +52,11 @@ public class CalculateTotInfluence {
 
 	public static class TotalEdgeWeightCalculateReducer extends
 			Reducer<Text, DoubleWritable, NullWritable, Text> {
+		
+		private void incrementTotalInfluenceSumCounter(Double inc, Context context) {
+			long incNormalized = (long) (inc * Math.pow(10, 18));
+			context.getCounter(NewmanMetricCounters.TOTAL_INFLUENCE_SUM).increment(incNormalized);
+		}
 
 		private Text resultValue = new Text();
 
@@ -83,6 +91,8 @@ public class CalculateTotInfluence {
 					resultValue.set(calculatedNode.toString() + "\t"
 							+ inf.toString());
 					context.write(NullWritable.get(), resultValue);
+					
+					incrementTotalInfluenceSumCounter(inf.get(), context);
 				}
 			}
 		}
@@ -93,8 +103,8 @@ public class CalculateTotInfluence {
 		String[] otherArgs = new GenericOptionsParser(conf, args)
 				.getRemainingArgs();
 
-		if (otherArgs.length != 2) {
-			System.err.println("Usage: calculatetotinfluence <in> <out>");
+		if (otherArgs.length != 3) {
+			System.err.println("Usage: calculatetotinfluence <in> <out> <path_to_metric_file_in_HDFS>");
 			System.exit(2);
 		}
 
@@ -108,7 +118,21 @@ public class CalculateTotInfluence {
 		job.setOutputValueClass(Text.class);
 		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
 		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
-
-		System.exit(job.waitForCompletion(true) ? 0 : 1);
+		
+		job.waitForCompletion(true);
+		
+		// Write the Counter updates to metric file in HDFS
+		Path metricFilePathInHDFS = new Path(otherArgs[2]);
+		
+		NewmanMetricInfoFactory metricInfoFactory = new NewmanMetricInfoFactory();
+		metricInfoFactory.readMetricInfoFromHDFS(metricFilePathInHDFS, conf);
+		
+		double newTotInfluenceSum = 
+				job.getCounters().findCounter(NewmanMetricCounters.TOTAL_INFLUENCE_SUM).getValue() / Math.pow(10, 18);
+		
+		metricInfoFactory.getMetricInfo().updateTotInfluenceSum(Double.toString(newTotInfluenceSum));
+		metricInfoFactory.writeMetricInfoToHDFS(metricFilePathInHDFS, conf);
+		
+		System.exit(0);
 	}
 }
