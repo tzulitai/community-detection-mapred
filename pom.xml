@@ -10,6 +10,7 @@
   	<module>graph-data-preprocessing</module>
   	<module>newman-community-detection</module>
   	<module>modified-approx-newman</module>
+  	<module>community-detection-utils</module>
   </modules>
   <dependencies>
   	<dependency>
