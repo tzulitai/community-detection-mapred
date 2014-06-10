@@ -1,5 +1,7 @@
 package tw.edu.ncku.ee.hpds.tai.mapred.comdetect.preprocessing;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
@@ -15,6 +17,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 import tw.edu.ncku.ee.hpds.tai.mapred.comdetect.utils.NewmanMetricCounters;
+import tw.edu.ncku.ee.hpds.tai.mapred.comdetect.utils.NewmanMetricInfo;
 import tw.edu.ncku.ee.hpds.tai.mapred.comdetect.utils.NewmanMetricInfoFactory;
 
 public class CalculateTotInfluence {
@@ -54,7 +57,7 @@ public class CalculateTotInfluence {
 			Reducer<Text, DoubleWritable, NullWritable, Text> {
 		
 		private void incrementTotalInfluenceSumCounter(Double inc, Context context) {
-			long incNormalized = (long) (inc * Math.pow(10, 18));
+			long incNormalized = (long) (inc * Math.pow(10, 6));
 			context.getCounter(NewmanMetricCounters.TOTAL_INFLUENCE_SUM).increment(incNormalized);
 		}
 		
@@ -143,9 +146,10 @@ public class CalculateTotInfluence {
 		job.waitForCompletion(true);
 		
 		// Write the Counter updates to metric file in HDFS
-		Path metricFilePathInHDFS = new Path(otherArgs[2]);
+		//Path metricFilePathInHDFS = new Path(otherArgs[2]);
 		
-		NewmanMetricInfoFactory metricInfoFactory = new NewmanMetricInfoFactory();
+		
+		/*NewmanMetricInfoFactory metricInfoFactory = new NewmanMetricInfoFactory();
 		metricInfoFactory.readMetricInfoFromHDFS(metricFilePathInHDFS, conf);
 		
 		double newTotInfluenceSum = 
@@ -157,6 +161,26 @@ public class CalculateTotInfluence {
 		metricInfoFactory.getMetricInfo().updateTotInfluenceSum(Double.toString(newTotInfluenceSum));
 		metricInfoFactory.getMetricInfo().updateMaxNodeId(Integer.toString((int)newMaxNodeId));
 		metricInfoFactory.writeMetricInfoToHDFS(metricFilePathInHDFS, conf);
+		*/
+		
+		double newTotInfluenceSum = 
+				job.getCounters().findCounter(NewmanMetricCounters.TOTAL_INFLUENCE_SUM).getValue() / Math.pow(10, 6);
+		
+		long newMaxNodeId = 
+				job.getCounters().findCounter(NewmanMetricCounters.MAX_NODE_ID).getValue();
+		
+		NewmanMetricInfo metricInfo = new NewmanMetricInfo();
+		metricInfo.update("101", 
+							Integer.toString((int)newMaxNodeId), 
+							Double.toString(newTotInfluenceSum), 
+							"0", 
+							"0");
+		
+		FileWriter fw = new FileWriter("/home/johnny/test/metricFile.txt");
+		BufferedWriter bw = new BufferedWriter(fw);
+		
+		bw.write(metricInfo.toString());
+		bw.close();
 		
 		System.exit(0);
 	}

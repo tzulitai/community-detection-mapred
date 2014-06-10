@@ -19,6 +19,9 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
+import tw.edu.ncku.ee.hpds.tai.mapred.comdetect.utils.NewmanMetricCounters;
+import tw.edu.ncku.ee.hpds.tai.mapred.comdetect.utils.NewmanMetricInfoFactory;
+
 public class SortModularityChange {
 	
 	public static class ModDiffTokenizerMapper
@@ -81,17 +84,18 @@ public class SortModularityChange {
 		private MaxModChangeNodePair ijPair;
 		private String[] infoSeqSplit;
 		private Path[] metricFilePath;
-		
+		/*
 		// Variables to save values of metrics
 		private int MIN_NODE_ID;
 		private int MAX_NODE_ID;
 		private double TOTAL_INFLUENCE_SUM;
 		private String CURRENT_MERGE_I;
 		private String CURRENT_MERGE_J;
+		*/
 		
 		public void reduce(DoubleWritable modChange, Iterable<Text> infoSequence, Context context)
 			throws IOException, InterruptedException {
-			
+			/*
 			metricFilePath = DistributedCache.getLocalCacheFiles(context.getConfiguration());
 			BufferedReader br = new BufferedReader(new FileReader(metricFilePath[0].toString()));
 			while(br.ready()){
@@ -103,7 +107,7 @@ public class SortModularityChange {
 				TOTAL_INFLUENCE_SUM = Double.valueOf(lineSplit[2]);
 				CURRENT_MERGE_I = lineSplit[3];
 				CURRENT_MERGE_J = lineSplit[4];
-			}
+			}*/
 			
 			for(Text inf : infoSequence){		
 				
@@ -173,6 +177,11 @@ public class SortModularityChange {
 				}
 			}
 			
+			context.getCounter(NewmanMetricCounters.CURRENT_MERGE_I)
+					.setValue((long)Integer.valueOf(ijPair.getNodeI().toString()));
+			context.getCounter(NewmanMetricCounters.CURRENT_MERGE_J)
+					.setValue((long)Integer.valueOf(ijPair.getNodeJ().toString()));
+			/*
 			// Update the metric file
 			// (Will be rewritten many times, but the values are actually the same)
 			FileWriter fw = new FileWriter("/home/hpds/metricFile.txt");
@@ -183,6 +192,7 @@ public class SortModularityChange {
 											+ CURRENT_MERGE_J);
 			fw.write(metricInfo);
 			fw.close();
+			*/
 		}
 	}
 	
@@ -191,7 +201,7 @@ public class SortModularityChange {
 		String[] otherArgs = new GenericOptionsParser(conf,args).getRemainingArgs();
 		
 		if (otherArgs.length != 3) {
-			System.err.println("Usage: newman-sort-mod-change <in> <out> <path/to/metric/file>");
+			System.err.println("Usage: newman-sort-mod-change <in> <out> <path_to_metric_file_in_HDFS>");
 			System.exit(2);
 		}
 		
@@ -209,6 +219,24 @@ public class SortModularityChange {
 		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
 		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
 		
-		System.exit(job.waitForCompletion(true) ? 0 : 1);
+		job.waitForCompletion(true);
+		
+		// Write the Counter updates to metric file in HDFS
+		Path metricFilePathInHDFS = new Path(otherArgs[2]);
+				
+		NewmanMetricInfoFactory metricInfoFactory = new NewmanMetricInfoFactory();
+		metricInfoFactory.readMetricInfoFromHDFS(metricFilePathInHDFS, conf);
+				
+		double newTotInfluenceSum = 
+			job.getCounters().findCounter(NewmanMetricCounters.TOTAL_INFLUENCE_SUM).getValue() / Math.pow(10, 18);
+				
+		long newMaxNodeId = 
+			job.getCounters().findCounter(NewmanMetricCounters.MAX_NODE_ID).getValue();
+				
+		metricInfoFactory.getMetricInfo().updateTotInfluenceSum(Double.toString(newTotInfluenceSum));
+		metricInfoFactory.getMetricInfo().updateMaxNodeId(Integer.toString((int)newMaxNodeId));
+		metricInfoFactory.writeMetricInfoToHDFS(metricFilePathInHDFS, conf);
+		
+		System.exit(0);
 	}
 }

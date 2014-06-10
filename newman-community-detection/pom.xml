@@ -8,4 +8,11 @@
   <artifactId>newman-community-detection</artifactId>
   <name>newman-community-detection</name>
   <description>Newman's community detection algorithm based on graph modularity</description>
+  <dependencies>
+  	<dependency>
+  		<groupId>tw.edu.ncku.ee.hpds.tai</groupId>
+  		<artifactId>community-detection-utils</artifactId>
+  		<version>0.0.1-SNAPSHOT</version>
+  	</dependency>
+  </dependencies>
 </project>
