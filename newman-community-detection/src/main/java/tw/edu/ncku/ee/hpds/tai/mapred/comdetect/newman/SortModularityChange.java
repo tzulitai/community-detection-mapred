@@ -20,74 +20,78 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 public class SortModularityChange {
-	
-	public static class ModDiffTokenizerMapper
-		extends Mapper<Object, Text, DoubleWritable, Text>{
-		
+
+	public static class ModDiffTokenizerMapper extends
+			Mapper<Object, Text, DoubleWritable, Text> {
+
 		private DoubleWritable interModDiff = new DoubleWritable();
 		private Text interValue = new Text();
-		
+
 		public void map(Object offset, Text modDiffWithInfo, Context context)
-			throws IOException, InterruptedException {
+				throws IOException, InterruptedException {
 			String mdwiStr = new String(modDiffWithInfo.toString());
 			String[] mdwiStrSplit = mdwiStr.split("\\t");
-			
+
 			interModDiff.set(Double.valueOf(mdwiStrSplit[0]));
-			interValue.set(mdwiStrSplit[1] + ","
-							+ mdwiStrSplit[2] + ","
-							+ mdwiStrSplit[3]);
-			
-			// interModDiff will be sorted by value in the shuffle and sort phase.
-			// So reduce function will receive the <k-v> representing the maximum modularity change first
+			interValue.set(mdwiStrSplit[1] + "," + mdwiStrSplit[2] + ","
+					+ mdwiStrSplit[3]);
+
+			// interModDiff will be sorted by value in the shuffle and sort
+			// phase.
+			// So reduce function will receive the <k-v> representing the
+			// maximum modularity change first
 			context.write(interModDiff, interValue);
 		}
 	}
-	
-	public static class MaxModChangeRetrieverReducer
-		extends Reducer<DoubleWritable, Text, NullWritable, Text>{
-		
+
+	public static class MaxModChangeRetrieverReducer extends
+			Reducer<DoubleWritable, Text, NullWritable, Text> {
+
 		private class MaxModChangeNodePair {
-			
+
 			private Text NodeI;
 			private Text NodeJ;
 			private Double pairEdgeInfluence;
-			
-			/*public MaxModChangeNodePair{
-				
-			}*/
+
+			/*
+			 * public MaxModChangeNodePair{
+			 * 
+			 * }
+			 */
 			public Text getNodeI() {
 				return NodeI;
 			}
-			
+
 			public Text getNodeJ() {
 				return NodeJ;
 			}
-			
+
 			public double getInfluence() {
 				return pairEdgeInfluence;
 			}
-			
+
 			public void setNodeI(String i) {
-				if(NodeI == null){
+				if (NodeI == null) {
 					NodeI = new Text(i);
 				}
 			}
-			
+
 			public void setNodeJ(String j) {
-				if(NodeJ == null){
+				if (NodeJ == null) {
 					NodeJ = new Text(j);
 				}
 			}
-			
+
 			public void setInfluence(double inf) {
-				pairEdgeInfluence = (pairEdgeInfluence == null) ? inf : this.pairEdgeInfluence;
+				pairEdgeInfluence = (pairEdgeInfluence == null) ? inf
+						: this.pairEdgeInfluence;
 			}
 		}
-		
+
 		private Text resultValue = new Text();
 		private String[] infoSeqSplit;
 		private Path[] metricFilePath;
-		
+
 		// Variables to save values of metrics
 		private int MIN_NODE_ID;
 		private int MAX_NODE_ID;
@@ -95,123 +99,123 @@ public class SortModularityChange {
 		private double TOTAL_INFLUENCE_SUM;
 		private String CURRENT_MERGE_I;
 		private String CURRENT_MERGE_J;
-		
-		public void reduce(DoubleWritable modChange, Iterable<Text> infoSequence, Context context)
-			throws IOException, InterruptedException {
-			
-			metricFilePath = DistributedCache.getLocalCacheFiles(context.getConfiguration());
-			BufferedReader br = new BufferedReader(new FileReader(metricFilePath[0].toString()));
-			while(br.ready()){
+
+		public void reduce(DoubleWritable modChange,
+				Iterable<Text> infoSequence, Context context)
+				throws IOException, InterruptedException {
+
+			metricFilePath = DistributedCache.getLocalCacheFiles(context
+					.getConfiguration());
+			BufferedReader br = new BufferedReader(new FileReader(
+					metricFilePath[0].toString()));
+			while (br.ready()) {
 				String tmpLine = br.readLine();
 				String[] lineSplit = tmpLine.split(",");
-				
+
 				MIN_NODE_ID = Integer.valueOf(lineSplit[0]);
 				MAX_NODE_ID = Integer.valueOf(lineSplit[1]);
 				TOTAL_INFLUENCE_SUM = Double.valueOf(lineSplit[2]);
 				CURRENT_MERGE_I = lineSplit[3];
 				CURRENT_MERGE_J = lineSplit[4];
 			}
-			FileWriter fw2 = new FileWriter("/home/johnny/test/infoSeqSplit.txt");
-			for(Text inf : infoSequence){				
+			for (Text inf : infoSequence) {
 				infoSeqSplit = inf.toString().split(",");
 				// i,j,IJedgeWeight
-				// TODO this implementation introduces a lot of redundant operations...
+				// TODO this implementation introduces a lot of redundant
+				// operations...
 				// very dumb implementation...
 				// Should try to use Counters
-				
-				
+
 				// this ijPair denotes the node pair with max modularity change,
-				// and will only be set once (specifically, set to the first infoSequence that arrives).
-				// Executive sets will not change the private field values (ijPair.NodeI & ijPair.NodeJ)
+				// and will only be set once (specifically, set to the first
+				// infoSequence that arrives).
+				// Executive sets will not change the private field values
+				// (ijPair.NodeI & ijPair.NodeJ)
 				ijPair.setNodeI(infoSeqSplit[0]);
 				ijPair.setNodeJ(infoSeqSplit[1]);
-				
-				fw2.write("inf.toString()  = "+ inf.toString()+"\n");
-				fw2.write("infoSeqSplit[0] = "+ infoSeqSplit[0]+"\n");	
-				fw2.write("infoSeqSplit[1] = "+ infoSeqSplit[1]+"\n");
-				fw2.close();
-				
 				ijPair.setInfluence(Double.valueOf(infoSeqSplit[2]));
-				
-				if ( ((infoSeqSplit[0] == ijPair.getNodeI().toString()) || (infoSeqSplit[1] == ijPair.getNodeJ().toString()))
-						&& infoSeqSplit[1] != "0") {
-					
+
+				if (((infoSeqSplit[0] == ijPair.getNodeI().toString()) || (infoSeqSplit[1] == ijPair
+						.getNodeJ().toString())) && infoSeqSplit[1] != "0") {
+
 					resultValue.set(ijPair.getNodeI().toString() + "\t"
-									+ infoSeqSplit[1] + "\t"
-									+ infoSeqSplit[2]);
-					
+							+ infoSeqSplit[1] + "\t" + infoSeqSplit[2]);
+
 					context.write(NullWritable.get(), resultValue);
-					
-				} else if (((infoSeqSplit[0] == ijPair.getNodeI().toString()) || (infoSeqSplit[1] == ijPair.getNodeJ().toString()))
-						&& infoSeqSplit[1] == "0") {
-					
-					resultValue.set(ijPair.getNodeI().toString() + "\t"
-									+ "0\t"
-									+ infoSeqSplit[2]);
-					
+
+				} else if (((infoSeqSplit[0] == ijPair.getNodeI().toString()) || (infoSeqSplit[1] == ijPair
+						.getNodeJ().toString())) && infoSeqSplit[1] == "0") {
+
+					resultValue.set(ijPair.getNodeI().toString() + "\t" + "0\t"
+							+ infoSeqSplit[2]);
+
 					context.write(NullWritable.get(), resultValue);
-					
+
 				} else if (infoSeqSplit[2] == ijPair.getNodeJ().toString()) {
-					
+
 					resultValue.set(infoSeqSplit[0] + "\t"
-									+ ijPair.getNodeI().toString() + "\t"
-									+ infoSeqSplit[2]);
-					
+							+ ijPair.getNodeI().toString() + "\t"
+							+ infoSeqSplit[2]);
+
 					context.write(NullWritable.get(), resultValue);
-					
+
 				} else if (infoSeqSplit[2] == ijPair.getNodeI().toString()) {
-					
-					if(Integer.valueOf(infoSeqSplit[0]) < Integer.valueOf(ijPair.getNodeI().toString())) {
-						
+
+					if (Integer.valueOf(infoSeqSplit[0]) < Integer
+							.valueOf(ijPair.getNodeI().toString())) {
+
 						resultValue.set(infoSeqSplit[0] + "\t"
-										+ ijPair.getNodeI().toString() + "\t"
-										+ infoSeqSplit[2]);
+								+ ijPair.getNodeI().toString() + "\t"
+								+ infoSeqSplit[2]);
 					} else {
-						
+
 						resultValue.set(ijPair.getNodeI().toString() + "\t"
-										+ infoSeqSplit[0] + "\t"
-										+ infoSeqSplit[2]);
+								+ infoSeqSplit[0] + "\t" + infoSeqSplit[2]);
 					}
-					
+
 					context.write(NullWritable.get(), resultValue);
-					
+
 				} else {
-					
-					resultValue.set(infoSeqSplit[0] + "\t"
-									+ infoSeqSplit[1] + "\t"
-									+ infoSeqSplit[2]);
-					
+
+					resultValue.set(infoSeqSplit[0] + "\t" + infoSeqSplit[1]
+							+ "\t" + infoSeqSplit[2]);
+
 					context.write(NullWritable.get(), resultValue);
 				}
 			}
-			
-			
+
 			// Update the metric file
-			// (Will be rewritten many times, but the values are actually the same)
-			FileWriter fw = new FileWriter("/home/johnny/test/metricFile_update.txt");
+			// (Will be rewritten many times, but the values are actually the
+			// same)
+			FileWriter fw = new FileWriter(
+					"/home/johnny/test/metricFile_update.txt");
 			String metricInfo = new String(String.valueOf(MIN_NODE_ID) + ","
-											+ String.valueOf(MAX_NODE_ID) + ","
-											+ String.valueOf(TOTAL_INFLUENCE_SUM) + ","
-											+ ijPair.getNodeI().toString() + ","
-											+ ijPair.getNodeJ().toString());
+					+ String.valueOf(MAX_NODE_ID) + ","
+					+ String.valueOf(TOTAL_INFLUENCE_SUM) + ","
+					+ ijPair.getNodeI().toString() + ","
+					+ ijPair.getNodeJ().toString());
 			fw.write(metricInfo);
 			fw.close();
 		}
 	}
-	
+
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		String[] otherArgs = new GenericOptionsParser(conf,args).getRemainingArgs();
-		
+		String[] otherArgs = new GenericOptionsParser(conf, args)
+				.getRemainingArgs();
+
 		if (otherArgs.length != 3) {
-			System.err.println("Usage: newman-sort-mod-change <in> <out> <path/to/metric/file>");
+			System.err
+					.println("Usage: newman-sort-mod-change <in> <out> <path/to/metric/file>");
 			System.exit(2);
 		}
-		
+
 		Job job = new Job(conf, "Newman algorithm - Sort Modularity Change");
-		
-		DistributedCache.addCacheFile(new URI("/user/hdfs-2.2.0/metricFile.txt"), job.getConfiguration());
-		
+
+		DistributedCache.addCacheFile(
+				new URI("/user/hdfs-2.2.0/metricFile.txt"),
+				job.getConfiguration());
+
 		job.setJarByClass(SortModularityChange.class);
 		job.setMapperClass(ModDiffTokenizerMapper.class);
 		job.setReducerClass(MaxModChangeRetrieverReducer.class);
@@ -221,7 +225,7 @@ public class SortModularityChange {
 		job.setOutputValueClass(Text.class);
 		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
 		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
-		
+
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
 	}
 }
