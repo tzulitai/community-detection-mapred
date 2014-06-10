@@ -102,7 +102,7 @@ public class MergeAndAdjust {
 		
 		Job job = new Job(conf, "Newman algorithm - Sort Modularity Change");
 		
-		DistributedCache.addCacheFile(new URI(otherArgs[2]), conf);
+		DistributedCache.addCacheFile(new URI(otherArgs[2]), job.getConfiguration());
 		
 		job.setJarByClass(MergeAndAdjust.class);
 		job.setMapperClass(EdgeWeightTokenizerMapper.class);

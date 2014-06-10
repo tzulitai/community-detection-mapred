@@ -191,7 +191,7 @@ public class SortModularityChange {
 					"/home/johnny/test/metricFile_update.txt");
 			String metricInfo = new String(String.valueOf(MIN_NODE_ID) + ","
 					+ String.valueOf(MAX_NODE_ID) + ","
-					+ String.valueOf(TOTAL_INFLUENCE_SUM) + ","
+					+ String.valueOf(TOTAL_INFLUENCE_SUM-ijPair.getInfluence()) + ","
 					+ ijPair.getNodeI().toString() + ","
 					+ ijPair.getNodeJ().toString());
 			fw.write(metricInfo);
