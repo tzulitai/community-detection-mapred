@@ -63,7 +63,9 @@ public class AddRandomWeight {
 			System.err.println("Usage: friendWeight <in> <out>");
 			System.exit(2);
 		}
+		
 		Job job = new Job(conf, "friend weight");
+		job.setNumReduceTasks(64);
 		job.setJarByClass(AddRandomWeight.class);
 		job.setMapperClass(TokenizerMapper.class);
 		// job.setCombinerClass(IntSumReducer.class);

@@ -176,7 +176,7 @@ public class CalculateTotInfluence {
 							"0", 
 							"0");
 		
-		FileWriter fw = new FileWriter("/home/johnny/test/metricFile.txt");
+		FileWriter fw = new FileWriter("/home/hpds/metricFile.txt");
 		BufferedWriter bw = new BufferedWriter(fw);
 		
 		bw.write(metricInfo.toString());
