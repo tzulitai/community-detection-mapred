@@ -19,9 +19,6 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
-import tw.edu.ncku.ee.hpds.tai.mapred.comdetect.utils.NewmanMetricCounters;
-import tw.edu.ncku.ee.hpds.tai.mapred.comdetect.utils.NewmanMetricInfoFactory;
-
 public class SortModularityChange {
 	
 	public static class ModDiffTokenizerMapper
@@ -54,7 +51,10 @@ public class SortModularityChange {
 			private Text NodeI;
 			private Text NodeJ;
 			private Double pairEdgeInfluence;
-		
+			
+			/*public MaxModChangeNodePair{
+				
+			}*/
 			public Text getNodeI() {
 				return NodeI;
 			}
@@ -68,11 +68,15 @@ public class SortModularityChange {
 			}
 			
 			public void setNodeI(String i) {
-				NodeI.set(NodeI == null ? i : this.NodeI.toString());
+				if(NodeI == null){
+					NodeI = new Text(i);
+				}
 			}
 			
 			public void setNodeJ(String j) {
-				NodeJ.set(NodeJ == null ? j : this.NodeJ.toString());
+				if(NodeJ == null){
+					NodeJ = new Text(j);
+				}
 			}
 			
 			public void setInfluence(double inf) {
@@ -81,21 +85,20 @@ public class SortModularityChange {
 		}
 		
 		private Text resultValue = new Text();
-		private MaxModChangeNodePair ijPair;
 		private String[] infoSeqSplit;
 		private Path[] metricFilePath;
-		/*
+		
 		// Variables to save values of metrics
 		private int MIN_NODE_ID;
 		private int MAX_NODE_ID;
+		private MaxModChangeNodePair ijPair = new MaxModChangeNodePair();
 		private double TOTAL_INFLUENCE_SUM;
 		private String CURRENT_MERGE_I;
 		private String CURRENT_MERGE_J;
-		*/
 		
 		public void reduce(DoubleWritable modChange, Iterable<Text> infoSequence, Context context)
 			throws IOException, InterruptedException {
-			/*
+			
 			metricFilePath = DistributedCache.getLocalCacheFiles(context.getConfiguration());
 			BufferedReader br = new BufferedReader(new FileReader(metricFilePath[0].toString()));
 			while(br.ready()){
@@ -107,22 +110,27 @@ public class SortModularityChange {
 				TOTAL_INFLUENCE_SUM = Double.valueOf(lineSplit[2]);
 				CURRENT_MERGE_I = lineSplit[3];
 				CURRENT_MERGE_J = lineSplit[4];
-			}*/
-			
-			for(Text inf : infoSequence){		
-				
-				// i,j,IJedgeWeight
+			}
+			FileWriter fw2 = new FileWriter("/home/johnny/test/infoSeqSplit.txt");
+			for(Text inf : infoSequence){				
 				infoSeqSplit = inf.toString().split(",");
-				
+				// i,j,IJedgeWeight
 				// TODO this implementation introduces a lot of redundant operations...
 				// very dumb implementation...
 				// Should try to use Counters
+				
 				
 				// this ijPair denotes the node pair with max modularity change,
 				// and will only be set once (specifically, set to the first infoSequence that arrives).
 				// Executive sets will not change the private field values (ijPair.NodeI & ijPair.NodeJ)
 				ijPair.setNodeI(infoSeqSplit[0]);
 				ijPair.setNodeJ(infoSeqSplit[1]);
+				
+				fw2.write("inf.toString()  = "+ inf.toString()+"\n");
+				fw2.write("infoSeqSplit[0] = "+ infoSeqSplit[0]+"\n");	
+				fw2.write("infoSeqSplit[1] = "+ infoSeqSplit[1]+"\n");
+				fw2.close();
+				
 				ijPair.setInfluence(Double.valueOf(infoSeqSplit[2]));
 				
 				if ( ((infoSeqSplit[0] == ijPair.getNodeI().toString()) || (infoSeqSplit[1] == ijPair.getNodeJ().toString()))
@@ -177,22 +185,17 @@ public class SortModularityChange {
 				}
 			}
 			
-			context.getCounter(NewmanMetricCounters.CURRENT_MERGE_I)
-					.setValue((long)Integer.valueOf(ijPair.getNodeI().toString()));
-			context.getCounter(NewmanMetricCounters.CURRENT_MERGE_J)
-					.setValue((long)Integer.valueOf(ijPair.getNodeJ().toString()));
-			/*
+			
 			// Update the metric file
 			// (Will be rewritten many times, but the values are actually the same)
-			FileWriter fw = new FileWriter("/home/hpds/metricFile.txt");
+			FileWriter fw = new FileWriter("/home/johnny/test/metricFile_update.txt");
 			String metricInfo = new String(String.valueOf(MIN_NODE_ID) + ","
 											+ String.valueOf(MAX_NODE_ID) + ","
 											+ String.valueOf(TOTAL_INFLUENCE_SUM) + ","
-											+ CURRENT_MERGE_I + ","
-											+ CURRENT_MERGE_J);
+											+ ijPair.getNodeI().toString() + ","
+											+ ijPair.getNodeJ().toString());
 			fw.write(metricInfo);
 			fw.close();
-			*/
 		}
 	}
 	
@@ -201,13 +204,13 @@ public class SortModularityChange {
 		String[] otherArgs = new GenericOptionsParser(conf,args).getRemainingArgs();
 		
 		if (otherArgs.length != 3) {
-			System.err.println("Usage: newman-sort-mod-change <in> <out> <path_to_metric_file_in_HDFS>");
+			System.err.println("Usage: newman-sort-mod-change <in> <out> <path/to/metric/file>");
 			System.exit(2);
 		}
 		
 		Job job = new Job(conf, "Newman algorithm - Sort Modularity Change");
 		
-		DistributedCache.addCacheFile(new URI(otherArgs[2]), conf);
+		DistributedCache.addCacheFile(new URI("/user/hdfs-2.2.0/metricFile.txt"), job.getConfiguration());
 		
 		job.setJarByClass(SortModularityChange.class);
 		job.setMapperClass(ModDiffTokenizerMapper.class);
@@ -219,24 +222,6 @@ public class SortModularityChange {
 		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
 		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
 		
-		job.waitForCompletion(true);
-		
-		// Write the Counter updates to metric file in HDFS
-		Path metricFilePathInHDFS = new Path(otherArgs[2]);
-				
-		NewmanMetricInfoFactory metricInfoFactory = new NewmanMetricInfoFactory();
-		metricInfoFactory.readMetricInfoFromHDFS(metricFilePathInHDFS, conf);
-				
-		double newTotInfluenceSum = 
-			job.getCounters().findCounter(NewmanMetricCounters.TOTAL_INFLUENCE_SUM).getValue() / Math.pow(10, 18);
-				
-		long newMaxNodeId = 
-			job.getCounters().findCounter(NewmanMetricCounters.MAX_NODE_ID).getValue();
-				
-		metricInfoFactory.getMetricInfo().updateTotInfluenceSum(Double.toString(newTotInfluenceSum));
-		metricInfoFactory.getMetricInfo().updateMaxNodeId(Integer.toString((int)newMaxNodeId));
-		metricInfoFactory.writeMetricInfoToHDFS(metricFilePathInHDFS, conf);
-		
-		System.exit(0);
+		System.exit(job.waitForCompletion(true) ? 0 : 1);
 	}
 }
