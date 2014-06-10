@@ -85,6 +85,7 @@ public class CalculateInfluence {
 		}
 
 		Job job = new Job(conf, "Calculate Influence");
+		job.setNumReduceTasks(128);
 		job.setJarByClass(CalculateInfluence.class);
 		job.setMapperClass(EdgeWeightReaderMapper.class);
 		job.setReducerClass(InfluenceCalculatorReducer.class);
